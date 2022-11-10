@@ -117,14 +117,14 @@ if ($removeWeb) {
 if ($null -eq $webService -and (-not $removeWeb)) {
     $InstallFeatures = $webFeatures
     do { 
-	$CaptureInstall = $installFeatures| %{ Add-WindowsFeature -includeallSubFeature -name $_ }
-	$ConfirmInstall = $InstallFeatures | %{ get-WindowsFeature -name $_ }
-	$InstallFeatures = $ConfirmInstall.InstallState -eq "Available" | %{$_.name}
+        $CaptureInstall = $installFeatures| %{ Add-WindowsFeature -includeallSubFeature -name $_ }
+        $ConfirmInstall = $InstallFeatures | %{ get-WindowsFeature -name $_ }
+        $InstallFeatures = $ConfirmInstall.InstallState -eq "Available" | %{$_.name}
     } while ($null -ne $installFeatures)
     $CaptureInstall = $webFeatures | %{Add-WindowsFeature -includeallSubFeature -name $_}
     $restartNeeded = $restartNeeded -or ($CaptureInstall.restartNeeded -eq "yes")
     $confirmInstall = $webFeatures | %{get-WindowsFeature -name $_}
-    $ConfirmInstall | select name, installState | out-file c:\bin\IIS_Install.log
+    $ConfirmInstall | select name, installState | out-file -append -path $logFile
     if ($null -ne ($ConfirmInstall.InstallState -ne "installed")) { return "failed to install Windows Features" }
 	# add .net components
 	write-output "install net-framework-core"
@@ -142,7 +142,7 @@ if ($null -eq $webService -and (-not $removeWeb)) {
 	}
 
 } else {
-    write-output "web services already installed"
+    write-output "web services already installed" -path $logFile
 }
 
 
@@ -156,7 +156,6 @@ if (-not $removeWeb) {
 	### Remove default site and app pools ###
 	Remove-WebSite -name *
 	Remove-WebAppPool -name *
-
 	### Configure server level HTTP settings ###
 	set-webconfigurationproperty /system.applicationHost/sites/siteDefaults/logFile -name logExtFileFlags -value "Date,Time,ClientIP,UserName,ServerIP,Method,UriStem,UriQuery,HttpStatus,Win32Status,BytesSent,BytesRecv,TimeTaken,ServerPort,UserAgent,Cookie,Referer,ProtocolVersion,Host,HttpSubStatus"
 	set-webconfigurationproperty /system.applicationHost/sites/siteDefaults/logFile -name localTimeRollover -value "True"
@@ -167,10 +166,9 @@ if (-not $removeWeb) {
 
 if ($ConfigureFTP) {
     ### Configure sever level FTP settings ###
-
+    write-output "configuring website per request:" -path $logfile
     set-webconfigurationproperty /system.applicationHost/sites/siteDefaults/ftpserver/logFile -name logExtFileFlags -value "Date,Time,ClientIP,UserName,ServerIP,Method,UriStem,FtpStatus,Win32Status,BytesSent,BytesRecv,TimeTaken,ServerPort,Host,FtpSubStatus,Session,FullPath,Info,ClientPort"
-    set-webconfigurationproperty /system.applicationHost/sites/siteDefaults/ftpserver/logFile -name localTimeRollover -value "True"
-    
+    set-webconfigurationproperty /system.applicationHost/sites/siteDefaults/ftpserver/logFile -name localTimeRollover -value "True"    
     set-webconfigurationproperty /system.ftpserver/log -name logInUTF8 -value "False"
     set-webconfigurationproperty /system.applicationhost/sites/siteDefaults/ftpserver/security/authentication/basicauthentication -name Enabled -value True
     set-webconfigurationproperty /system.ftpserver/firewallsupport -name LowDataChannelPort -value 50000
@@ -184,9 +182,13 @@ if ($ConfigureFTP) {
 }
 
 if ($configureWebsite) {
+    write-output "configuring website per request:" -path $logfile
+    # determine drive letter for web install. See if drive letter if valid entry.
     if ($Web_Drive_letter -like "*:") { $Web_Drive = $Web_Drive_letter + "\" } 
     else { $web_drive = $(get-psDrive -name $web_drive_letter).root }
-    if ($null -eq $web_drive -or $Web_Drive -eq "") { return "invalid drive requested" }
+    if ($null -eq $web_drive -or $Web_Drive -eq "") { 
+        write-output -path $logFile "Web drive not found"
+        return "invalid drive requested" }
 
     $Web_folder = $web_drive + $Web_Path
     ### Create WAU folder structure ###
@@ -217,7 +219,7 @@ if ($configureWebsite) {
 stop-transcript
 
 if ($restartNeeded ) {
-    write-verbose "reboot required. "
+    write-output "reboot required. " -path $logFile
     #triggers reboot with 60s delay.
     Restart-Computer -timeout 60 -force
 }

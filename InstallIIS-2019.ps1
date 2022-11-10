@@ -70,9 +70,27 @@ param(
 # when variables are specified it will configure different items on the server. 
 
 
+#if ($PSVersionTable.PSVersion.Major -lt 7) {
+#	write-verbose "installing posh 7"
+#	Invoke-Expression "& { $(Invoke-RestMethod -Uri https://aka.ms/install-powershell.ps1) } -UseMSI -Preview -Quiet"
+#}
+
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+
 # variable used to track if a reboot is required after any portion of script. 
 $restartNeeded = $false
 
+# creates log file based on current date-time.
+# c:\bin\iis_install-11-10-2022_104336_AM.log
+if (!(test-path -path "c:\bin\")) {
+	# bin folder doesn't exist, creating it for log drop.
+	new-item -path "c:\bin" -itemType Directory
+}
+$LogFile = "c:\bin\iis_install-"+$((get-date).ToString().replace("/","-").replace(" ","_").replace(":",""))+".log"
+Start-Transcript -Path $LogFile
+
+# check if web and FTP service already installed. 
 #$Name = "World Wide Web Publishing Service"
 $webService = Get-Service -name W3SVC -ErrorAction SilentlyContinue 
 $FTPService = Get-Service -name FTPSV -ErrorAction SilentlyContinue 
@@ -81,46 +99,71 @@ $FTPService = Get-Service -name FTPSV -ErrorAction SilentlyContinue
 # ref: https://devblogs.microsoft.com/scripting/use-powershell-to-find-servers-that-need-a-reboot/
 #get-itemproperty -path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager" 
 
+
 ### Install IIS and features ###
-import-module servermanager, WebAdministration
+if ($null -eq (get-module serverManager)) {
+	install-module servermanager
+}
+import-module servermanager
+
+#list of features to install, will install individually. 
+$webFeatures = "Web-Server, Web-Http-Redirect, Web-ASP, Web-ISAPI-Ext, Web-ISAPI-Filter, Web-Includes, Web-Log-Libraries, Web-Http-Tracing, Web-Basic-Auth, Web-Windows-Auth, Web-IP-Security, Web-Url-Auth, Web-Scripting-Tools, Web-Mgmt-Service, Web-FTP-Server, Web-Ftp-Service, Web-Dyn-Compression, Web-Mgmt-Console".split(",") | foreach{$_.trim()}
+
 if ($removeWeb) {
-    $CaptureInstall = remove-WindowsFeature Web-Server, Web-Http-Redirect, Web-ASP, Web-ISAPI-Ext, Web-ISAPI-Filter, Web-Includes, Web-Log-Libraries, Web-Http-Tracing, Web-Basic-Auth, Web-Windows-Auth, Web-IP-Security, Web-Url-Auth, Web-Scripting-Tools, Web-Mgmt-Service, Web-FTP-Server, Web-Ftp-Service, Web-Dyn-Compression, Web-Mgmt-Console 
+    $CaptureInstall = $webFeatures | %{remove-WindowsFeature -name $_}  # remove-WindowsFeature Web-Server, Web-Http-Redirect, Web-ASP, Web-ISAPI-Ext, Web-ISAPI-Filter, Web-Includes, Web-Log-Libraries, Web-Http-Tracing, Web-Basic-Auth, Web-Windows-Auth, Web-IP-Security, Web-Url-Auth, Web-Scripting-Tools, Web-Mgmt-Service, Web-FTP-Server, Web-Ftp-Service, Web-Dyn-Compression, Web-Mgmt-Console 
     $restartNeeded = $restartNeeded -or ($CaptureInstall.restartNeeded -eq "yes")
 } 
 
-if ($null -eq $webService) {
-    $CaptureInstall = Add-WindowsFeature Web-Server, Web-Http-Redirect, Web-ASP, Web-ISAPI-Ext, Web-ISAPI-Filter, Web-Includes, Web-Log-Libraries, Web-Http-Tracing, Web-Basic-Auth, Web-Windows-Auth, Web-IP-Security, Web-Url-Auth, Web-Scripting-Tools, Web-Mgmt-Service, Web-FTP-Server, Web-Ftp-Service, Web-Dyn-Compression, Web-Mgmt-Console 
+if ($null -eq $webService -and (-not $removeWeb)) {
+    $InstallFeatures = $webFeatures
+    do { 
+	$CaptureInstall = $installFeatures| %{ Add-WindowsFeature -includeallSubFeature -name $_ }
+	$ConfirmInstall = $InstallFeatures | %{ get-WindowsFeature -name $_ }
+	$InstallFeatures = $ConfirmInstall.InstallState -eq "Available" | %{$_.name}
+    } while ($null -ne $installFeatures)
+    $CaptureInstall = $webFeatures | %{Add-WindowsFeature -includeallSubFeature -name $_}
     $restartNeeded = $restartNeeded -or ($CaptureInstall.restartNeeded -eq "yes")
-    if ($catpureInstall.exitCode -ne "Success") { return "failed to install Windows Features" }
+    $confirmInstall = $webFeatures | %{get-WindowsFeature -name $_}
+    $ConfirmInstall | select name, installState | out-file c:\bin\IIS_Install.log
+    if ($null -ne ($ConfirmInstall.InstallState -ne "installed")) { return "failed to install Windows Features" }
+	# add .net components
+	write-output "install net-framework-core"
+	$captureInstall = Install-WindowsFeature Net-Framework-Core #-source \\network\share\sxs
+	$restartNeeded = $restartNeeded -or ($CaptureInstall.restartNeeded -eq "yes")
+
+	if ((get-WindowsFeature web-asp-net).installstate -ne "Installed") {
+	    $captureInstall = install-windowsfeature web-asp-net
+	    $restartNeeded = $restartNeeded -or ($CaptureInstall.restartNeeded -eq "yes")
+	}
+	if ((get-WindowsFeature web-asp-net45).installstate -ne "Installed") {
+	    #Install-WindowsFeature Web-Asp-Net45 -source c:\windows\winsxs
+	    $captureInstall = install-windowsfeature Net-Framework-45-Core
+	    $restartNeeded = $restartNeeded -or ($CaptureInstall.restartNeeded -eq "yes")
+	}
+
+} else {
+    write-output "web services already installed"
 }
 
 
-# add .net components
-$captureInstall = Install-WindowsFeature Net-Framework-Core -source \\network\share\sxs
-$restartNeeded = $restartNeeded -or ($CaptureInstall.restartNeeded -eq "yes")
-
-if ((get-WindowsFeature web-asp-net).installstate -ne "Installed") {
-    $captureInstall = add-windowsfeature web-asp-net
-    $restartNeeded = $restartNeeded -or ($CaptureInstall.restartNeeded -eq "yes")
+# webAdministration module is added as part of IIS features. Doesn't exist before then. 
+if ($null -eq (get-module WebAdministration)) {
+	install-module WebAdministration
 }
-if ((get-WindowsFeature web-asp-net45).installstate -ne "Installed") {
-    #Install-WindowsFeature Web-Asp-Net45 -source c:\windows\winsxs
-    $captureInstall = add-windowsfeature Net-Framework-45-Core
-    $restartNeeded = $restartNeeded -or ($CaptureInstall.restartNeeded -eq "yes")
+import-module WebAdministration
+
+if (-not $removeWeb) {
+	### Remove default site and app pools ###
+	Remove-WebSite -name *
+	Remove-WebAppPool -name *
+
+	### Configure server level HTTP settings ###
+	set-webconfigurationproperty /system.applicationHost/sites/siteDefaults/logFile -name logExtFileFlags -value "Date,Time,ClientIP,UserName,ServerIP,Method,UriStem,UriQuery,HttpStatus,Win32Status,BytesSent,BytesRecv,TimeTaken,ServerPort,UserAgent,Cookie,Referer,ProtocolVersion,Host,HttpSubStatus"
+	set-webconfigurationproperty /system.applicationHost/sites/siteDefaults/logFile -name localTimeRollover -value "True"
+	set-webconfigurationproperty /system.applicationHost/log -name logInUTF8 -value "False"
+	set-webconfigurationproperty /system.webServer/security/authentication/anonymousAuthentication -name userName -value ""
+	set-webconfigurationproperty /system.applicationHost/applicationPools/applicationPoolDefaults -name managedRuntimeVersion -value "v4.0"
 }
-
-### Remove default site and app pools ###
-Remove-WebSite -name *
-Remove-WebAppPool -name *
-
-
-### Configure server level HTTP settings ###
-
-set-webconfigurationproperty /system.applicationHost/sites/siteDefaults/logFile -name logExtFileFlags -value "Date,Time,ClientIP,UserName,ServerIP,Method,UriStem,UriQuery,HttpStatus,Win32Status,BytesSent,BytesRecv,TimeTaken,ServerPort,UserAgent,Cookie,Referer,ProtocolVersion,Host,HttpSubStatus"
-set-webconfigurationproperty /system.applicationHost/sites/siteDefaults/logFile -name localTimeRollover -value "True"
-set-webconfigurationproperty /system.applicationHost/log -name logInUTF8 -value "False"
-set-webconfigurationproperty /system.webServer/security/authentication/anonymousAuthentication -name userName -value ""
-set-webconfigurationproperty /system.applicationHost/applicationPools/applicationPoolDefaults -name managedRuntimeVersion -value "v4.0"
 
 if ($ConfigureFTP) {
     ### Configure sever level FTP settings ###
@@ -171,10 +214,10 @@ if ($configureWebsite) {
     Set-Acl $Web_folder $acl
 }
 
+stop-transcript
 
 if ($restartNeeded ) {
     write-verbose "reboot required. "
     #triggers reboot with 60s delay.
     Restart-Computer -timeout 60 -force
 }
-

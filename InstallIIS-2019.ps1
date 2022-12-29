@@ -87,7 +87,7 @@ if (!(test-path -path "c:\bin\")) {
 	# bin folder doesn't exist, creating it for log drop.
 	new-item -path "c:\bin" -itemType Directory
 }
-$LogFile = "c:\bin\iis_install-"+$((get-date).ToString().replace("/","-").replace(" ","_").replace(":",""))+".log"
+$LogFile = $myinvocation.InvocationName+"-"+$((get-date).ToString().replace("/","-").replace(" ","_").replace(":",""))+".log"
 Start-Transcript -Path $LogFile
 
 # check if web and FTP service already installed. 
@@ -124,7 +124,7 @@ if ($null -eq $webService -and (-not $removeWeb)) {
     $CaptureInstall = $webFeatures | %{Add-WindowsFeature -includeallSubFeature -name $_}
     $restartNeeded = $restartNeeded -or ($CaptureInstall.restartNeeded -eq "yes")
     $confirmInstall = $webFeatures | %{get-WindowsFeature -name $_}
-    $ConfirmInstall | select name, installState | out-file -append -path $logFile
+    $ConfirmInstall | select name, installState | Write-Output
     if ($null -ne ($ConfirmInstall.InstallState -ne "installed")) { return "failed to install Windows Features" }
 	# add .net components
 	write-output "install net-framework-core"
@@ -142,7 +142,7 @@ if ($null -eq $webService -and (-not $removeWeb)) {
 	}
 
 } else {
-    write-output "web services already installed" -path $logFile
+    "web services already installed" | Write-Output
 }
 
 
@@ -166,7 +166,7 @@ if (-not $removeWeb) {
 
 if ($ConfigureFTP) {
     ### Configure sever level FTP settings ###
-    write-output "configuring website per request:" -path $logfile
+    "configuring website per request:" | Write-Output
     set-webconfigurationproperty /system.applicationHost/sites/siteDefaults/ftpserver/logFile -name logExtFileFlags -value "Date,Time,ClientIP,UserName,ServerIP,Method,UriStem,FtpStatus,Win32Status,BytesSent,BytesRecv,TimeTaken,ServerPort,Host,FtpSubStatus,Session,FullPath,Info,ClientPort"
     set-webconfigurationproperty /system.applicationHost/sites/siteDefaults/ftpserver/logFile -name localTimeRollover -value "True"    
     set-webconfigurationproperty /system.ftpserver/log -name logInUTF8 -value "False"
@@ -182,12 +182,12 @@ if ($ConfigureFTP) {
 }
 
 if ($configureWebsite) {
-    write-output "configuring website per request:" -path $logfile
+    "configuring website per request:" | Write-Output
     # determine drive letter for web install. See if drive letter if valid entry.
     if ($Web_Drive_letter -like "*:") { $Web_Drive = $Web_Drive_letter + "\" } 
     else { $web_drive = $(get-psDrive -name $web_drive_letter).root }
     if ($null -eq $web_drive -or $Web_Drive -eq "") { 
-        write-output -path $logFile "Web drive not found"
+        "Web drive not found" | write-output 
         return "invalid drive requested" }
 
     $Web_folder = $web_drive + $Web_Path
@@ -219,7 +219,7 @@ if ($configureWebsite) {
 stop-transcript
 
 if ($restartNeeded ) {
-    write-output "reboot required. " -path $logFile
+    write-output "reboot required" 
     #triggers reboot with 60s delay.
     Restart-Computer -timeout 60 -force
 }

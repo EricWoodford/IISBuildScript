@@ -104,7 +104,7 @@ $FTPService = Get-Service -name FTPSV -ErrorAction SilentlyContinue
 if ($null -eq (get-module serverManager)) {
 	install-module servermanager
 }
-import-module servermanager
+if (get-module -name 'serverManager') {import-module servermanager}
 
 #list of features to install, will install individually. 
 $webFeatures = "Web-Server, Web-Http-Redirect, Web-ASP, Web-ISAPI-Ext, Web-ISAPI-Filter, Web-Includes, Web-Log-Libraries, Web-Http-Tracing, Web-Basic-Auth, Web-Windows-Auth, Web-IP-Security, Web-Url-Auth, Web-Scripting-Tools, Web-Mgmt-Service, Web-FTP-Server, Web-Ftp-Service, Web-Dyn-Compression, Web-Mgmt-Console".split(",") | foreach{$_.trim()}
@@ -150,7 +150,7 @@ if ($null -eq $webService -and (-not $removeWeb)) {
 if ($null -eq (get-module WebAdministration)) {
 	install-module WebAdministration
 }
-import-module WebAdministration
+if (get-module -name WebAdministration ) {import-module WebAdministration}
 
 if (-not $removeWeb) {
 	### Remove default site and app pools ###
@@ -216,10 +216,11 @@ if ($configureWebsite) {
     Set-Acl $Web_folder $acl
 }
 
-stop-transcript
+
 
 if ($restartNeeded ) {
-    write-output "reboot required" 
-    #triggers reboot with 60s delay.
-    Restart-Computer -timeout 60 -force
+    write-output "reboot required" # to logs.        
 }
+
+stop-transcript
+return $(get-content $logfile)

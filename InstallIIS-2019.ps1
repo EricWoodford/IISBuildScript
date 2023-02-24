@@ -100,12 +100,13 @@ $FTPService = Get-Service -name FTPSV -ErrorAction SilentlyContinue
 # ref: https://devblogs.microsoft.com/scripting/use-powershell-to-find-servers-that-need-a-reboot/
 #get-itemproperty -path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager" 
 
-
-### Install IIS and features ###
-if ($null -eq (get-module serverManager)) {
-	install-module servermanager
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+	### Install IIS and features ###
+	if ($null -eq (get-module serverManager)) {
+		install-module servermanager
+	}
+	if (get-module -name 'serverManager') {import-module servermanager}
 }
-if (get-module -name 'serverManager') {import-module servermanager}
 
 #list of features to install, will install individually. 
 $webFeatures = "Web-Server, Web-Http-Redirect, Web-ASP, Web-ISAPI-Ext, Web-ISAPI-Filter, Web-Includes, Web-Log-Libraries, Web-Http-Tracing, Web-Basic-Auth, Web-Windows-Auth, Web-IP-Security, Web-Url-Auth, Web-Scripting-Tools, Web-Mgmt-Service, Web-FTP-Server, Web-Ftp-Service, Web-Dyn-Compression, Web-Mgmt-Console".split(",") | foreach{$_.trim()}
@@ -146,12 +147,13 @@ if ($null -eq $webService -and (-not $removeWeb)) {
     "web services already installed" | Write-Output
 }
 
-
-# webAdministration module is added as part of IIS features. Doesn't exist before then. 
-if ($null -eq (get-module WebAdministration)) {
-	install-module WebAdministration
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+	# webAdministration module is added as part of IIS features. Doesn't exist before then. 
+	if ($null -eq (get-module WebAdministration)) {
+		install-module WebAdministration
+	}
+	if (get-module -name WebAdministration ) {import-module WebAdministration}
 }
-if (get-module -name WebAdministration ) {import-module WebAdministration}
 
 if (-not $removeWeb) {
 	### Remove default site and app pools ###

@@ -75,7 +75,7 @@ param(
 #	Invoke-Expression "& { $(Invoke-RestMethod -Uri https://aka.ms/install-powershell.ps1) } -UseMSI -Preview -Quiet"
 #}
 
-Install-PackageProvider -Name NuGet
+Install-PackageProvider -Name NuGet -RequiredVersion 2.8.5.208 -Force
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 

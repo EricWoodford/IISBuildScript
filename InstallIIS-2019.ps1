@@ -75,7 +75,9 @@ param(
 #	Invoke-Expression "& { $(Invoke-RestMethod -Uri https://aka.ms/install-powershell.ps1) } -UseMSI -Preview -Quiet"
 #}
 
-Install-PackageProvider -Name NuGet -RequiredVersion 2.8.5.208 -Force
+if ((get-packageProvider -name nuget).version.tostring() -lt "2.8.5") {
+	Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.208 -Force
+}
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 
@@ -100,7 +102,7 @@ $FTPService = Get-Service -name FTPSV -ErrorAction SilentlyContinue
 # ref: https://devblogs.microsoft.com/scripting/use-powershell-to-find-servers-that-need-a-reboot/
 #get-itemproperty -path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager" 
 
-if ($PSVersionTable.PSVersion.Major -lt 7) {
+if ((get-command -Name "get-windowsFeature" -erroraction silentlycontinue) -eq $null) {
 	### Install IIS and features ###
 	if ($null -eq (get-module serverManager)) {
 		install-module servermanager
@@ -147,7 +149,7 @@ if ($null -eq $webService -and (-not $removeWeb)) {
     "web services already installed" | Write-Output
 }
 
-if ($PSVersionTable.PSVersion.Major -lt 7) {
+if ((get-command -name "set-webconfigurationproperty" -erroraction silentlycontinue) -eq $null) {
 	# webAdministration module is added as part of IIS features. Doesn't exist before then. 
 	if ($null -eq (get-module WebAdministration)) {
 		install-module WebAdministration

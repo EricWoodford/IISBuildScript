@@ -146,6 +146,8 @@ if ($null -eq $webService -and (-not $removeWeb)) {
 	}
 
 } else {
+    $webFeatures = "Web-Server, Web-Http-Redirect, Web-ASP, Web-ISAPI-Ext, Web-ISAPI-Filter, Web-Includes, Web-Log-Libraries, Web-Http-Tracing, Web-Basic-Auth, Web-Windows-Auth, Web-IP-Security, Web-Url-Auth, Web-Scripting-Tools, Web-Mgmt-Service, Web-FTP-Server, Web-Ftp-Service, Web-Dyn-Compression, Web-Mgmt-Console".split(",") | foreach{$_.trim()}
+     $webfeatures | %{ get-WindowsFeature -name $_ }
     "web services already installed" | Write-Output
 }
 

@@ -90,7 +90,7 @@ if (!(test-path -path "c:\bin\")) {
 	# bin folder doesn't exist, creating it for log drop.
 	new-item -path "c:\bin" -itemType Directory
 }
-$LogFile = $myinvocation.InvocationName+"-"+$((get-date).ToString().replace("/","-").replace(" ","_").replace(":",""))+".log"
+$LogFile = "c:\bin\install-iis_"+$((get-date).ToString().replace("/","-").replace(" ","_").replace(":",""))+".log"
 Start-Transcript -Path $LogFile
 
 # check if web and FTP service already installed. 

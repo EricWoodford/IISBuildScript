@@ -121,7 +121,8 @@ if ($removeWeb) {
 if ($null -eq $webService -and (-not $removeWeb)) {
     $InstallFeatures = $webFeatures
     do { 
-        $CaptureInstall = $installFeatures| %{ Add-WindowsFeature -includeallSubFeature -name $_ }
+       # $CaptureInstall = $installFeatures| %{ Add-WindowsFeature -includeallSubFeature -name $_ }
+        $CaptureInstall = $installFeatures| %{ Add-WindowsFeature -name $_ }
         $ConfirmInstall = $InstallFeatures | %{ get-WindowsFeature -name $_ }
         $InstallFeatures = $ConfirmInstall.InstallState -eq "Available" | %{$_.name}
     } while ($null -ne $installFeatures)

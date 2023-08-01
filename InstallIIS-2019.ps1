@@ -126,7 +126,8 @@ if ($null -eq $webService -and (-not $removeWeb)) {
         $ConfirmInstall = $InstallFeatures | %{ get-WindowsFeature -name $_ }
         $InstallFeatures = $ConfirmInstall.InstallState -eq "Available" | %{$_.name}
     } while ($null -ne $installFeatures)
-    $CaptureInstall = $webFeatures | %{Add-WindowsFeature -includeallSubFeature -name $_}
+    # $CaptureInstall = $webFeatures | %{Add-WindowsFeature -includeallSubFeature -name $_}
+    $CaptureInstall = $webFeatures | %{Add-WindowsFeature -name $_}
     $restartNeeded = $restartNeeded -or ($CaptureInstall.restartNeeded -eq "yes")
     $confirmInstall = $webFeatures | %{get-WindowsFeature -name $_}
     $ConfirmInstall | select name, installState | Write-Output

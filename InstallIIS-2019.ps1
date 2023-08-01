@@ -51,8 +51,8 @@
 
 [CmdLetBinding()]
 param( 
-    [parameter(Mandatory = $false, ParameterSetName = "configWeb")]
-    [switch]$configureWebsite,
+   # [parameter(Mandatory = $false, ParameterSetName = "configWeb")]
+   # [switch]$configureWebsite,
     [parameter(Mandatory = $false)]    
     [switch]$removeWeb,    
     [parameter(Mandatory = $false, ParameterSetName = "configWeb")]
@@ -61,14 +61,15 @@ param(
     [string]$Web_Path = "CA.Web",
     [parameter(Mandatory = $false)]    
     [string]$AdminGroup = "TDC\WebServerAdmin Global",
-    [parameter(Mandatory = $false)]
-    [switch]$ConfigureFTP,
+   # [parameter(Mandatory = $false)]
+   # [switch]$ConfigureFTP,
     [parameter(Mandatory = $false)]    
     [switch]$removeFTP
 )
 # with no switches, the script will install the windows features for IIS
 # when variables are specified it will configure different items on the server. 
 
+$configureWebsite = $configureFTP = !$removeWeb
 
 #if ($PSVersionTable.PSVersion.Major -lt 7) {
 #	write-verbose "installing posh 7"

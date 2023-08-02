@@ -76,7 +76,7 @@ $configureWebsite = $configureFTP = !$removeWeb
 #	Invoke-Expression "& { $(Invoke-RestMethod -Uri https://aka.ms/install-powershell.ps1) } -UseMSI -Preview -Quiet"
 #}
 
-$web_drive_letter = (get-psDrive | ?{$_.description -eq "AppsData"}).root
+$web_drive_letter = (get-psDrive | ?{$_.description -eq "AppsData"}).name
 if ((get-packageProvider -name nuget).version.tostring() -lt "2.8.5") {
 	Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.208 -Force
 }

@@ -76,7 +76,6 @@ $configureWebsite = $configureFTP = !$removeWeb
 #	Invoke-Expression "& { $(Invoke-RestMethod -Uri https://aka.ms/install-powershell.ps1) } -UseMSI -Preview -Quiet"
 #}
 
-$web_drive_letter = (get-psDrive | ?{$_.description -eq "AppsData"}).name
 if ((get-packageProvider -name nuget).version.tostring() -lt "2.8.5") {
 	Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.208 -Force
 }
@@ -105,6 +104,7 @@ $FTPService = Get-Service -name FTPSV -ErrorAction SilentlyContinue
 #get-itemproperty -path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager" 
 
 if ((get-command -Name "get-windowsFeature" -erroraction silentlycontinue) -eq $null) {
+	$Web_Path
 	### Install IIS and features ###
 	if ($null -eq (get-module serverManager)) {
 		install-module servermanager
@@ -195,15 +195,20 @@ if ($ConfigureFTP) {
 if ($configureWebsite) {
     "configuring website per request:" | Write-Output
     # determine drive letter for web install. See if drive letter if valid entry.
-    if ($Web_Drive_letter -like "*:") { $Web_Drive = $Web_Drive_letter + "\" } 
-    else { $web_drive = $(get-psDrive -name $web_drive_letter).name }
+    #if ($Web_Drive_letter -like "*:") { $Web_Drive = $Web_Drive_letter + "\" } 
+    # else { 
+    
+    $web_drive = (get-psDrive | ?{$_.description -eq "AppsData"}).root
+
+    #$web_drive = $(get-psDrive -name $web_drive_letter).root # }
+    
     if ($null -eq $web_drive -or $Web_Drive -eq "") { 
         "Web drive not found" | write-output 
         return "invalid drive requested" }
 
     $Web_folder = $web_drive + $Web_Path
     ### Create WAU folder structure ###
-    if (!(test-path -path $web_folder)) { New-Item -Type Directory -Path $web_drive -Name $Web_Path }
+    if (!(test-path -path $web_folder)) { New-Item -Type Directory -Path $web_drive -Name }
     if (!(test-path -path $($web_folder + "/certs"))) { New-Item -Type Directory -Path $Web_folder -Name Certs }
     if (!(test-path -path $($web_folder + "/LogFiles"))) { New-Item -Type Directory -Path $Web_folder -Name LogFiles }
     if (!(test-path -path $($web_folder + "/Sites"))) { New-Item -Type Directory -Path $Web_folder -Name Sites }

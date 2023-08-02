@@ -55,8 +55,8 @@ param(
    # [switch]$configureWebsite,
     [parameter(Mandatory = $false)]    
     [switch]$removeWeb,    
-    [parameter(Mandatory = $false, ParameterSetName = "configWeb")]
-    [string]$Web_Drive_letter,
+   # [parameter(Mandatory = $false, ParameterSetName = "configWeb")]
+   # [string]$Web_Drive_letter,
     [parameter(Mandatory = $false, ParameterSetName = "configWeb")]
     [string]$Web_Path = "CA.Web",
     [parameter(Mandatory = $false)]    
@@ -76,6 +76,7 @@ $configureWebsite = $configureFTP = !$removeWeb
 #	Invoke-Expression "& { $(Invoke-RestMethod -Uri https://aka.ms/install-powershell.ps1) } -UseMSI -Preview -Quiet"
 #}
 
+$web_drive_letter = (get-psDrive | ?{$_.description -eq "AppsData"}).root
 if ((get-packageProvider -name nuget).version.tostring() -lt "2.8.5") {
 	Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.208 -Force
 }
@@ -195,7 +196,7 @@ if ($configureWebsite) {
     "configuring website per request:" | Write-Output
     # determine drive letter for web install. See if drive letter if valid entry.
     if ($Web_Drive_letter -like "*:") { $Web_Drive = $Web_Drive_letter + "\" } 
-    else { $web_drive = $(get-psDrive -name $web_drive_letter).root }
+    else { $web_drive = $(get-psDrive -name $web_drive_letter).name }
     if ($null -eq $web_drive -or $Web_Drive -eq "") { 
         "Web drive not found" | write-output 
         return "invalid drive requested" }

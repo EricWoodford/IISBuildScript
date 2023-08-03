@@ -128,7 +128,8 @@ if ($null -eq $webService -and (-not $removeWeb)) {
     $restartNeeded = $restartNeeded -or ($CaptureInstall.restartNeeded -eq "yes")
     $confirmInstall = $webFeatures | ForEach-Object { get-WindowsFeature -name $_ }
     $ConfirmInstall | Select-Object name, installState | Write-Output
-    if ($null -ne ($ConfirmInstall.InstallState -ne "installed")) { return "failed to install Windows Features" }
+    $missedInstall = $ConfirmInstall | where-object {$_.installState -ne "Installed"}
+    if ($null -ne $missedInstall) { return "failed to install Windows Features" }
     # add .net components
     write-output "install net-framework-core"
     $captureInstall = Install-WindowsFeature Net-Framework-Core #-source \\network\share\sxs

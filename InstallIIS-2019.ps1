@@ -60,7 +60,7 @@ param(
     [parameter(Mandatory = $false, ParameterSetName = "configWeb")]
     [string]$Web_Path = "CA.Web",
     [parameter(Mandatory = $false)]    
-    [string]$AdminGroup = "TDC\WebServerAdmin Global",
+    [string]$AdminGroup = "mgmt\WAU_Admin_GL",
     # [parameter(Mandatory = $false)]
     # [switch]$ConfigureFTP,
     [parameter(Mandatory = $false)]    

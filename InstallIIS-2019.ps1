@@ -180,7 +180,7 @@ set-webconfigurationproperty /system.ftpserver/firewallsupport -name HighDataCha
 set-webconfigurationproperty /system.applicationhost/sites/siteDefaults/ftpserver/security/ssl -name ssl128 -value True
 ###$hostname = hostname
 ###$cert = get-childitem cert:/localmachine/my | where-object {$_.subject -eq "CN=WMSvc-$hostname"}
-$cert = get-childitem cert:/localmachine/my | where-object { $_.subject -eq "CN=WMSVC-SHA2" }
+$cert = get-childitem cert:/localmachine/my | where-object { $_.subject -like "CN=WMSVC-SHA2*" }
 set-webconfigurationproperty /system.applicationhost/sites/siteDefaults/ftpserver/security/ssl -name serverCertHash -value $cert.thumbprint
 Add-WebConfiguration -Filter /System.FTPServer/Security/Authorization -PSPath 'IIS:\' -Value (@{AccessType = "Allow"; Users = $AdminGroup; Roles = $AdminGroup; Permissions = "Read, Write" })
 

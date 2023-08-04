@@ -182,8 +182,11 @@ set-webconfigurationproperty /system.applicationhost/sites/siteDefaults/ftpserve
 ###$cert = get-childitem cert:/localmachine/my | where-object {$_.subject -eq "CN=WMSvc-$hostname"}
 $cert = get-childitem cert:/localmachine/my | where-object { $_.subject -like "CN=WMSVC-SHA2*" }
 set-webconfigurationproperty /system.applicationhost/sites/siteDefaults/ftpserver/security/ssl -name serverCertHash -value $cert.thumbprint
-Add-WebConfiguration -Filter /System.FTPServer/Security/Authorization -PSPath 'IIS:\' -Value (@{AccessType = "Allow"; Users = $AdminGroup; Roles = $AdminGroup; Permissions = "Read, Write" })
-
+if ($null -eq (Get-WebConfiguration -Filter /System.FTPServer/Security/Authorization)) {
+    Add-WebConfiguration -Filter /System.FTPServer/Security/Authorization -PSPath 'IIS:\' -Value (@{AccessType = "Allow"; Users = $AdminGroup; Roles = $AdminGroup; Permissions = "Read, Write" })
+} else {
+    Get-WebConfiguration -Filter /System.FTPServer/Security/Authorization
+}
 
 "configuring website per request:" | Write-Output
 $web_drive = (get-psDrive | Where-Object { $_.description -eq "AppsData" }).root

@@ -79,6 +79,7 @@ if ($null -eq (get-command -Name "get-windowsFeature" -erroraction silentlyconti
 }
 
 #list of features to install, will install individually. 
+#$webFeatures = "Web-Server, Web-Http-Redirect, Web-ASP, Web-ISAPI-Ext, Web-ISAPI-Filter, Web-Includes, Web-Log-Libraries, Web-Http-Tracing, Web-Basic-Auth, Web-Windows-Auth, Web-IP-Security, Web-Url-Auth, Web-Scripting-Tools, Web-Mgmt-Service, Web-FTP-Server, Web-Ftp-Service, Web-Dyn-Compression, Web-Mgmt-Console".split(",") | foreach { $_.trim() }
 $webFeatures = "Web-Server, Web-Http-Redirect, Web-ASP, Web-ISAPI-Ext, Web-ISAPI-Filter, Web-Includes, Web-Log-Libraries, Web-Http-Tracing, Web-Basic-Auth, Web-Windows-Auth, Web-IP-Security, Web-Url-Auth, Web-Scripting-Tools, Web-Mgmt-Service, Web-FTP-Server, Web-Ftp-Service, Web-Dyn-Compression, Web-Mgmt-Console".split(",") | foreach { $_.trim() }
 
 if ($removeWeb) {
@@ -86,41 +87,40 @@ if ($removeWeb) {
     $restartNeeded = $restartNeeded -or ($CaptureInstall.restartNeeded -eq "yes")
 } 
 
-if ($null -eq $webService -and (-not $removeWeb)) {
-    $InstallFeatures = $webFeatures
-    do { 
-        # $CaptureInstall = $installFeatures| %{ Add-WindowsFeature -includeallSubFeature -name $_ }
-        $CaptureInstall = $installFeatures | ForEach-Object { Add-WindowsFeature -name $_ }
-        $ConfirmInstall = $InstallFeatures | ForEach-Object { get-WindowsFeature -name $_ }
-        $InstallFeatures = $ConfirmInstall.InstallState -eq "Available" | ForEach-Object { $_.name }
-    } while ($null -ne $installFeatures)
-    # $CaptureInstall = $webFeatures | %{Add-WindowsFeature -includeallSubFeature -name $_}
-    $CaptureInstall = $webFeatures | ForEach-Object { Add-WindowsFeature -name $_ }
-    $restartNeeded = $restartNeeded -or ($CaptureInstall.restartNeeded -eq "yes")
-    $confirmInstall = $webFeatures | ForEach-Object { get-WindowsFeature -name $_ }
-    $ConfirmInstall | Select-Object name, installState | Write-Output
-    $missedInstall = $ConfirmInstall | where-object {$_.installState -ne "Installed"}
-    if ($null -ne $missedInstall) { return "failed to install Windows Features" }
-    # add .net components
-    write-output "install net-framework-core"
-    $captureInstall = Install-WindowsFeature Net-Framework-Core #-source \\network\share\sxs
-    $restartNeeded = $restartNeeded -or ($CaptureInstall.restartNeeded -eq "yes")
 
-    if ((get-WindowsFeature web-asp-net).installstate -ne "Installed") {
-        $captureInstall = install-windowsfeature web-asp-net
-        $restartNeeded = $restartNeeded -or ($CaptureInstall.restartNeeded -eq "yes")
-    }
-    if ((get-WindowsFeature web-asp-net45).installstate -ne "Installed") {
-        #Install-WindowsFeature Web-Asp-Net45 -source c:\windows\winsxs
-        $captureInstall = install-windowsfeature Net-Framework-45-Core
-        $restartNeeded = $restartNeeded -or ($CaptureInstall.restartNeeded -eq "yes")
-    }
+$InstallFeatures = $webFeatures
+do { 
+    # $CaptureInstall = $installFeatures| %{ Add-WindowsFeature -includeallSubFeature -name $_ }
+    $CaptureInstall = $installFeatures | ForEach-Object { Add-WindowsFeature -name $_ }
+    $ConfirmInstall = $InstallFeatures | ForEach-Object { get-WindowsFeature -name $_ }
+    $InstallFeatures = $ConfirmInstall.InstallState -eq "Available" | ForEach-Object { $_.name }
+} while ($null -ne $installFeatures)
+# $CaptureInstall = $webFeatures | %{Add-WindowsFeature -includeallSubFeature -name $_}
+$CaptureInstall = $webFeatures | ForEach-Object { Add-WindowsFeature -name $_ }
+$restartNeeded = $restartNeeded -or ($CaptureInstall.restartNeeded -eq "yes")
+$confirmInstall = $webFeatures | ForEach-Object { get-WindowsFeature -name $_ }
+$ConfirmInstall | Select-Object name, installState | Write-Output
+$missedInstall = $ConfirmInstall | where-object {$_.installState -ne "Installed"}
+if ($null -ne $missedInstall) { return "failed to install Windows Features" }
+# add .net components
+write-output "install net-framework-core"
+$captureInstall = Install-WindowsFeature Net-Framework-Core #-source \\network\share\sxs
+$restartNeeded = $restartNeeded -or ($CaptureInstall.restartNeeded -eq "yes")
+
+if ((get-WindowsFeature web-asp-net).installstate -ne "Installed") {
+    $captureInstall = install-windowsfeature web-asp-net
+    $restartNeeded = $restartNeeded -or ($CaptureInstall.restartNeeded -eq "yes")
 }
-else {
-    $webFeatures = "Web-Server, Web-Http-Redirect, Web-ASP, Web-ISAPI-Ext, Web-ISAPI-Filter, Web-Includes, Web-Log-Libraries, Web-Http-Tracing, Web-Basic-Auth, Web-Windows-Auth, Web-IP-Security, Web-Url-Auth, Web-Scripting-Tools, Web-Mgmt-Service, Web-FTP-Server, Web-Ftp-Service, Web-Dyn-Compression, Web-Mgmt-Console".split(",") | foreach { $_.trim() }
-    $webfeatures | ForEach-Object { get-WindowsFeature -name $_ } | write-output
-    "web services already installed" | Write-Output
+if ((get-WindowsFeature web-asp-net45).installstate -ne "Installed") {
+    #Install-WindowsFeature Web-Asp-Net45 -source c:\windows\winsxs
+    $captureInstall = install-windowsfeature Net-Framework-45-Core
+    $restartNeeded = $restartNeeded -or ($CaptureInstall.restartNeeded -eq "yes")
 }
+
+$webFeatures = "Web-Server, Web-Http-Redirect, Web-ASP, Web-ISAPI-Ext, Web-ISAPI-Filter, Web-Includes, Web-Log-Libraries, Web-Http-Tracing, Web-Basic-Auth, Web-Windows-Auth, Web-IP-Security, Web-Url-Auth, Web-Scripting-Tools, Web-Mgmt-Service, Web-FTP-Server, Web-Ftp-Service, Web-Dyn-Compression, Web-Mgmt-Console".split(",") | foreach { $_.trim() }
+$webfeatures | ForEach-Object { get-WindowsFeature -name $_ } | write-output
+"web services already installed" | Write-Output
+
 
 if ($null -eq (get-command -name "set-webconfigurationproperty" -erroraction silentlycontinue)) {
     # webAdministration module is added as part of IIS features. Doesn't exist before then. 

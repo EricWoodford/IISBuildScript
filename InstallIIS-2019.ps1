@@ -144,7 +144,6 @@ if ($null -eq $webService -and (-not $removeWeb)) {
         $captureInstall = install-windowsfeature Net-Framework-45-Core
         $restartNeeded = $restartNeeded -or ($CaptureInstall.restartNeeded -eq "yes")
     }
-
 }
 else {
     $webFeatures = "Web-Server, Web-Http-Redirect, Web-ASP, Web-ISAPI-Ext, Web-ISAPI-Filter, Web-Includes, Web-Log-Libraries, Web-Http-Tracing, Web-Basic-Auth, Web-Windows-Auth, Web-IP-Security, Web-Url-Auth, Web-Scripting-Tools, Web-Mgmt-Service, Web-FTP-Server, Web-Ftp-Service, Web-Dyn-Compression, Web-Mgmt-Console".split(",") | foreach { $_.trim() }
@@ -219,6 +218,7 @@ $rule = New-Object System.Security.AccessControl.FileSystemAccessRule($AdminGrou
 $acl.AddAccessRule($rule)
 Set-Acl $Web_folder $acl
 
+Add-LocalGroupMember -Group "Administrators" -Member $adminGroup
 
 
 if ($restartNeeded ) {

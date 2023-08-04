@@ -27,22 +27,18 @@
     Include this switch to remove the FTP feature from the server. 
     
 .EXAMPLE
-    .\installIIS-2019.ps1 
-    Installs IIS feature 
-
-.EXAMPLE
-    .\InstallIIS-2019.ps1 -ConfigureWebSite -web_drive_letter D
+    .\InstallIIS-2019.ps1 
     Install IIS feature, creates folder on drive D called CA.Web and configures permissions for the TDC\WebServerAdmin Group to the folder. 
 
 .EXAMPLE
-    .\InstallIIS-2019.ps1 -ConfigureWebSite -web_drive_letter D -web_path 'EDDWebServer' -adminGroup 'edd\webAdmins' -configureFTP
+    .\InstallIIS-2019.ps1 -web_path 'EDDWebServer' -adminGroup 'edd\webAdmins'
     Install IIS feature, creates folder on drive D called EDDWebServer and configures permissions for the EDD\WebAdmins Group to the folder. In addition, enables the FTP service and grants the EDD\WebAdmins group permissions.     
 #>
 
 
 [CmdLetBinding()]
 param( 
-    [parameter(Mandatory = $false, ParameterSetName = "configWeb")]
+    [parameter(Mandatory = $false)]
     [string]$Web_Path = "CA.Web",
     [parameter(Mandatory = $false)]    
     [string]$AdminGroup = "mgmt\WAU_Admin_GL",

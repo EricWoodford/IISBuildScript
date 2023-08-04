@@ -14,20 +14,11 @@
 .LINK 
     https://github.com/scriptrunner/ActionPacks/tree/master/ActiveDirectory/Users 
 
-.Parameter ConfigureWebsite
-    Include this switch to create the web folder on the drive and folder specified.
-
-.Parameter Web_drive_letter
-    drive letter for the web site's default install folder.  (D, E..)
-
 .Parameter web_path
     folder where IIS will be configured to look for new websites. Default value is 'CA.Web'
  
 .Parameter AdminGroup
     The security group that will be granted permissions to the website folder. Default value is 'TDC\WebServerAdmin Group'
-
-.Parameter ConfigureFTP
-    Include this switch to configure default FTP server.
 
 .Parameter RemoveWeb
     Include this switch to remove the web feature from the server.
@@ -51,25 +42,17 @@
 
 [CmdLetBinding()]
 param( 
-    # [parameter(Mandatory = $false, ParameterSetName = "configWeb")]
-    # [switch]$configureWebsite,
-    [parameter(Mandatory = $false)]    
-    [switch]$removeWeb,    
-    # [parameter(Mandatory = $false, ParameterSetName = "configWeb")]
-    # [string]$Web_Drive_letter,
     [parameter(Mandatory = $false, ParameterSetName = "configWeb")]
     [string]$Web_Path = "CA.Web",
     [parameter(Mandatory = $false)]    
     [string]$AdminGroup = "mgmt\WAU_Admin_GL",
-    # [parameter(Mandatory = $false)]
-    # [switch]$ConfigureFTP,
+    [parameter(Mandatory = $false)]    
+    [switch]$removeWeb,    
     [parameter(Mandatory = $false)]    
     [switch]$removeFTP
 )
-# with no switches, the script will install the windows features for IIS
-# when variables are specified it will configure different items on the server. 
 
-
+#Verify nuGet installed
 if ((get-packageProvider -name nuget).version.tostring() -lt "2.8.5") {
     Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.208 -Force
 }
@@ -81,22 +64,14 @@ $restartNeeded = $false
 
 # creates log file based on current date-time.
 $LogRootFolder = "c:\bin"
-# c:\bin\iis_install-11-10-2022_104336_AM.log
-if (!(test-path -path $LogRootFolder)) {
-    # bin folder doesn't exist, creating it for log drop.
+if (!(test-path -path $LogRootFolder)) {    
     new-item -path $LogRootFolder -itemType Directory
 }
 $LogFile = $LogRootFolder + "\install-iis_" + $((get-date).ToString().replace("/", "-").replace(" ", "_").replace(":", "")) + ".log"
 Start-Transcript -Path $LogFile
 
 # check if web and FTP service already installed. 
-#$Name = "World Wide Web Publishing Service"
 $webService = Get-Service -name W3SVC -ErrorAction SilentlyContinue 
-# $FTPService = Get-Service -name FTPSV -ErrorAction SilentlyContinue 
-
-# might be useful to capture if reboot necessary. 
-# ref: https://devblogs.microsoft.com/scripting/use-powershell-to-find-servers-that-need-a-reboot/
-#get-itemproperty -path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager" 
 
 if ($null -eq (get-command -Name "get-windowsFeature" -erroraction silentlycontinue)) {
     #	$Web_Path
@@ -190,7 +165,6 @@ if ($null -eq (Get-WebConfiguration -Filter /System.FTPServer/Security/Authoriza
 
 "configuring website per request:" | Write-Output
 $web_drive = (get-psDrive | Where-Object { $_.description -eq "AppsData" }).root
-
 if ($null -eq $web_drive -or $Web_Drive -eq "") { 
     "Web drive not found" | write-output 
     return "invalid drive requested" 
@@ -210,7 +184,6 @@ set-webconfigurationproperty /system.applicationHost/sites/siteDefaults/logFile 
 set-webconfigurationproperty /system.applicationHost/sites/siteDefaults/ftpserver/logFile -name directory -value $($Web_folder + "\LogFiles")
 
 ### Set permissions oN WAU folder Structure ###
-
 $acl = Get-Acl $Web_folder
 $acl.SetAccessRuleProtection($True, $False)
 $rule = New-Object System.Security.AccessControl.FileSystemAccessRule("Administrators", "FullControl", "ContainerInherit, ObjectInherit", "None", "Allow")
@@ -221,6 +194,7 @@ $rule = New-Object System.Security.AccessControl.FileSystemAccessRule($AdminGrou
 $acl.AddAccessRule($rule)
 Set-Acl $Web_folder $acl
 
+# add mgmt group to local admins to allow RDP into server.
 Add-LocalGroupMember -Group "Administrators" -Member $adminGroup
 
 
